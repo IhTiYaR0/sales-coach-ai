@@ -102,10 +102,11 @@ function extractUserArray(data) {
   return []
 }
 
+import { apiFetch } from './api'
+
 async function loadUsers() {
-  const response = await fetch('/users', {
+  const response = await apiFetch('/users', {
     method: 'GET',
-    credentials: 'include',
   })
 
   if (!response.ok) {

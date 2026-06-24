@@ -25,10 +25,11 @@ async function readErrorMessage(response) {
   }
 }
 
+import { apiFetch } from '../api'
+
 async function sendLoginRequest() {
-  return fetch('/auth/login', {
+  return apiFetch('/auth/login', {
     method: 'POST',
-    credentials: 'include',
     headers: {
       'Content-Type': 'application/json',
     },

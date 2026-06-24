@@ -1,5 +1,6 @@
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue'
+import { apiFetch } from '../api'
 
 const props = defineProps({
   currentUser: {
@@ -333,13 +334,15 @@ function showNotification(message, type) {
 }
 
 // ── API calls ──────────────────────────────────────────────────────────────
+import { apiFetch } from '../api'
+
 async function fetchTeams() {
   isLoading.value = true
   error.value = ''
   try {
     const [teamsRes, myTeamsRes] = await Promise.all([
-      fetch('/teams', { credentials: 'include' }),
-      fetch('/teams/my', { credentials: 'include' }),
+      apiFetch('/teams', { method: 'GET' }),
+      apiFetch('/teams/my', { method: 'GET' }),
     ])
 
     if (!teamsRes.ok) throw new Error(`Ошибка ${teamsRes.status}`)
@@ -368,9 +371,8 @@ async function createTeam() {
   if (!name) return
   isCreating.value = true
   try {
-    const res = await fetch('/teams', {
+    const res = await apiFetch('/teams', {
       method: 'POST',
-      credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name }),
     })
@@ -452,7 +454,7 @@ function normalizeUserSearchText(user) {
 async function fetchUsers({ force = false } = {}) {
   if (!force && allUsers.value.length) return allUsers.value
 
-  const res = await fetch('/users', { credentials: 'include' })
+  const res = await apiFetch('/users', { method: 'GET' })
   if (!res.ok) {
     const errorBody = await res.text()
     throw new Error(errorBody || `Ошибка ${res.status}`)
@@ -526,9 +528,8 @@ function makeAddMemberForm(userId) {
 }
 
 async function sendAddMemberRequest(url) {
-  return fetch(url, {
+  return apiFetch(url, {
     method: 'POST',
-    credentials: 'include',
     headers: getCsrfHeaders(),
   })
 }
@@ -577,9 +578,8 @@ async function saveTeamCriteria() {
   criteriaError.value = ''
 
   try {
-    const res = await fetch(`/teams/${teamId}/criteria`, {
+    const res = await apiFetch(`/teams/${teamId}/criteria`, {
       method: 'PATCH',
-      credentials: 'include',
       headers: {
         'Content-Type': 'application/json',
         ...getCsrfHeaders(),
@@ -675,7 +675,7 @@ async function openUserProfile(user) {
   openingProfileCallId.value = null
 
   try {
-    const res = await fetch(`/users/${userId}`, { credentials: 'include' })
+    const res = await apiFetch(`/users/${userId}`, { method: 'GET' })
     if (!res.ok) throw new Error(`Ошибка ${res.status}`)
     profileUser.value = await res.json()
     loadProfileAnalytics(userId)
@@ -721,7 +721,7 @@ async function loadProfileAnalytics(userId) {
   profileAnalyticsError.value = ''
 
   try {
-    const res = await fetch(`/calls/analytics/${encodeURIComponent(analyticsUserId)}`, { method: 'GET', credentials: 'include' })
+    const res = await apiFetch(`/calls/analytics/${encodeURIComponent(analyticsUserId)}`, { method: 'GET' })
     if (!res.ok) throw new Error('Не удалось загрузить аналитику звонков')
     profileAnalytics.value = await res.json()
   } catch (err) {
@@ -748,9 +748,8 @@ async function loadProfileCallHistory(userId) {
   profileCallHistoryError.value = ''
 
   try {
-    const res = await fetch(`/calls/history/user/${encodeURIComponent(historyUserId)}`, {
+    const res = await apiFetch(`/calls/history/user/${encodeURIComponent(historyUserId)}`, {
       method: 'GET',
-      credentials: 'include',
     })
     if (!res.ok) throw new Error('Не удалось загрузить историю звонков')
 
@@ -775,9 +774,8 @@ async function openProfileCall(call) {
   selectedProfileCallError.value = ''
 
   try {
-    const res = await fetch(`/calls/history/${encodeURIComponent(call.id)}`, {
+    const res = await apiFetch(`/calls/history/${encodeURIComponent(call.id)}`, {
       method: 'GET',
-      credentials: 'include',
     })
     if (!res.ok) throw new Error('Не удалось загрузить анализ звонка')
 
@@ -818,9 +816,8 @@ async function deleteTeam() {
 
   isDeleting.value = true
   try {
-    const res = await fetch(`/teams/${teamId}`, {
+    const res = await apiFetch(`/teams/${teamId}`, {
       method: 'DELETE',
-      credentials: 'include',
       headers: getCsrfHeaders(),
     })
     if (!res.ok) {

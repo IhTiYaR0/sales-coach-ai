@@ -211,12 +211,13 @@ async function readErrorMessage(response) {
   }
 }
 
+import { apiFetch } from '../api'
+
 async function sendAnalyzeRequest(file) {
   const formData = new FormData()
   formData.append('audio_file', file, file.name)
-  return fetch('/calls/analyze', {
+  return apiFetch('/calls/analyze', {
     method: 'POST',
-    credentials: 'include',
     body: formData,
   })
 }
@@ -395,9 +396,8 @@ async function loadCallAudio(call) {
   call.audioError = ''
 
   try {
-    const response = await fetch(`/calls/${encodeURIComponent(callAudioId)}/audio`, {
+    const response = await apiFetch(`/calls/${encodeURIComponent(callAudioId)}/audio`, {
       method: 'GET',
-      credentials: 'include',
     })
 
     if (!response.ok) {
@@ -490,9 +490,8 @@ function buildHistoryCall(call) {
 
 async function fetchHistoryCallDetails(call) {
   try {
-    const response = await fetch(`/calls/history/${call.id}`, {
+    const response = await apiFetch(`/calls/history/${call.id}`, {
       method: 'GET',
-      credentials: 'include',
     })
 
     if (!response.ok) {
@@ -521,9 +520,8 @@ async function fetchHistoryCallDetails(call) {
 
 async function loadHistoryCalls() {
   try {
-    const response = await fetch('/calls/history', {
+    const response = await apiFetch('/calls/history', {
       method: 'GET',
-      credentials: 'include',
     })
 
     if (!response.ok) {

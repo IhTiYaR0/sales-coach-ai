@@ -36,10 +36,11 @@ async function readErrorMessage(response) {
   }
 }
 
+import { apiFetch } from '../api'
+
 async function sendRegisterRequest() {
-  return fetch('/auth/register', {
+  return apiFetch('/auth/register', {
     method: 'POST',
-    credentials: 'include',
     headers: {
       'Content-Type': 'application/json',
     },

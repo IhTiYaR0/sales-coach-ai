@@ -41,7 +41,7 @@ async function loadTeamName(teamId) {
   }
   teamLoading.value = true
   try {
-    const response = await fetch('/teams', { method: 'GET', credentials: 'include' })
+    const response = await apiFetch('/teams', { method: 'GET' })
     if (!response.ok) throw new Error(response.statusText)
     const data = await response.json()
     const teams = Array.isArray(data) ? data : data?.teams || data?.data || []
@@ -85,8 +85,10 @@ const saveAnalyticsCache = (data) => {
   }
 }
 
+import { apiFetch } from '../api'
+
 async function fetchAnalyticsFromServer() {
-  const response = await fetch('/calls/analytics/me', { method: 'GET', credentials: 'include' })
+  const response = await apiFetch('/calls/analytics/me', { method: 'GET' })
   if (!response.ok) throw new Error('Не удалось загрузить аналитику звонков')
   const json = await response.json()
   analyticsData.value = json

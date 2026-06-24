@@ -82,8 +82,10 @@ const normalizeCalls = (data) => extractCallsArray(data)
   .map(normalizeCall)
   .filter((call) => call.id != null)
 
+import { apiFetch } from '../api'
+
 const fetchCalls = async () => {
-  const res = await fetch('/calls/history', { method: 'GET', credentials: 'include' })
+  const res = await apiFetch('/calls/history', { method: 'GET' })
   if (!res.ok) throw new Error(`HTTP ${res.status}`)
   const json = await res.json()
   const normalized = normalizeCalls(json)
