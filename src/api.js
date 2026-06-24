@@ -1,4 +1,4 @@
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL?.trim() || 'https://ai-sales-coach-68ni.onrender.com'
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL?.trim() || ''
 
 function isAbsoluteUrl(value) {
   return /^https?:\/\//i.test(value)

@@ -1,0 +1,12 @@
+{
+  "rewrites": [
+    { "source": "/auth", "destination": "https://ai-sales-coach-68ni.onrender.com/auth" },
+    { "source": "/auth/:path*", "destination": "https://ai-sales-coach-68ni.onrender.com/auth/:path*" },
+    { "source": "/calls", "destination": "https://ai-sales-coach-68ni.onrender.com/calls" },
+    { "source": "/calls/:path*", "destination": "https://ai-sales-coach-68ni.onrender.com/calls/:path*" },
+    { "source": "/teams", "destination": "https://ai-sales-coach-68ni.onrender.com/teams" },
+    { "source": "/teams/:path*", "destination": "https://ai-sales-coach-68ni.onrender.com/teams/:path*" },
+    { "source": "/users", "destination": "https://ai-sales-coach-68ni.onrender.com/users" },
+    { "source": "/users/:path*", "destination": "https://ai-sales-coach-68ni.onrender.com/users/:path*" }
+  ]
+}
