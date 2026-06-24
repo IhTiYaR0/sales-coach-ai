@@ -6,9 +6,25 @@ export default defineConfig({
   plugins: [vue()],
   server: {
     proxy: {
-      '/analysis/analyze': {
+      '/calls': {
         target: 'http://127.0.0.1:8000',
         changeOrigin: true,
+        cookieDomainRewrite: 'localhost',
+      },
+      '/auth': {
+        target: 'http://127.0.0.1:8000',
+        changeOrigin: true,
+        cookieDomainRewrite: 'localhost',
+      },
+      '/teams': {
+        target: 'http://127.0.0.1:8000',
+        changeOrigin: true,
+        cookieDomainRewrite: 'localhost',
+      },
+      '/users': {
+        target: 'http://127.0.0.1:8000',
+        changeOrigin: true,
+        cookieDomainRewrite: 'localhost',
       },
     },
   },

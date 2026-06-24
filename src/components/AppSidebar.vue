@@ -1,17 +1,42 @@
 <script setup>
-defineProps({
+import { computed } from 'vue'
+
+const props = defineProps({
   isOpen: {
     type: Boolean,
     default: false,
   },
+  activePage: {
+    type: String,
+    default: 'home',
+  },
+  currentRole: {
+    type: String,
+    default: 'manager',
+  },
 })
 
-defineEmits(['close'])
+defineEmits(['close', 'navigate'])
 
-const navItems = [
-  { label: 'Главное', icon: 'dashboard', active: true },
-  { label: 'Мои звонки', icon: 'phone_in_talk' },
-]
+const navItems = computed(() => {
+  const items = []
+
+  if (props.currentRole === 'leader') {
+    items.push(
+      { label: 'Аналитика', icon: 'analytics', page: 'leader' },
+      { label: 'Команды', icon: 'groups', page: 'teams' },
+    )
+  } else {
+    items.push(
+      { label: 'Статистика', icon: 'dashboard', page: 'home' },
+      { label: 'Звонки', icon: 'phone_in_talk', page: 'calls' },
+    )
+  }
+
+  items.push({ label: 'Профиль', icon: 'account_circle', page: 'profile' })
+
+  return items
+})
 </script>
 
 <template>
@@ -36,8 +61,9 @@ const navItems = [
         v-for="item in navItems"
         :key="item.label"
         class="sidebar__link"
-        :class="{ 'sidebar__link--active': item.active }"
+        :class="{ 'sidebar__link--active': activePage === item.page }"
         href="#"
+        @click.prevent="$emit('navigate', item.page)"
       >
         <span class="material-symbols-outlined">{{ item.icon }}</span>
         <span>{{ item.label }}</span>
