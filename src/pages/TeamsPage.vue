@@ -334,7 +334,6 @@ function showNotification(message, type) {
 }
 
 // ── API calls ──────────────────────────────────────────────────────────────
-import { apiFetch } from '../api'
 
 async function fetchTeams() {
   isLoading.value = true
