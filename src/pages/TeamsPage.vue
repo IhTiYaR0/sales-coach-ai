@@ -757,6 +757,8 @@ async function loadProfileCallHistory(userId) {
       .map(normalizeProfileCall)
       .filter(call => call.id != null)
       .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))
+
+    prefetchProfileCallDetails(historyUserId)
   } catch (err) {
     profileCallHistoryError.value = err.message || 'Ошибка при загрузке истории звонков'
     profileCallHistory.value = []
@@ -765,32 +767,154 @@ async function loadProfileCallHistory(userId) {
   }
 }
 
+async function readCallDetailError(response) {
+  try {
+    const data = await response.json()
+    return data.detail || data.message || 'Не удалось загрузить анализ звонка'
+  } catch {
+    return response.status === 403
+      ? 'Нет доступа к этому звонку'
+      : 'Не удалось загрузить анализ звонка'
+  }
+}
+
+function applyProfileCallDetail(call, detail) {
+  return {
+    ...normalizeProfileCall({ ...call, ...detail }),
+    result: detail,
+    analysis: detail.analysis ?? null,
+    transcript: detail.transcript ?? '',
+    score: detail.analysis?.score ?? call.score,
+    dealProbability: detail.analysis?.deal_probability ?? call.dealProbability,
+    funnelStage: detail.analysis?.sales_funnel_stage ?? call.funnelStage,
+    audioObjectUrl: call.audioObjectUrl || '',
+    audioLoading: call.audioLoading || false,
+    audioError: call.audioError || '',
+  }
+}
+
+function revokeProfileCallAudio(call) {
+  if (!call?.audioObjectUrl) return
+  if (typeof call.audioObjectUrl === 'string' && call.audioObjectUrl.startsWith('blob:')) {
+    URL.revokeObjectURL(call.audioObjectUrl)
+  }
+  call.audioObjectUrl = ''
+}
+
+function getProfileCallAudioId(call) {
+  return call?.backendCallId ?? call?.call_id ?? call?.callId ?? call?.id
+}
+
+async function loadProfileCallAudio(call) {
+  const callAudioId = getProfileCallAudioId(call)
+  if (!call || !callAudioId || call.audioObjectUrl || call.audioLoading) return
+
+  call.audioLoading = true
+  call.audioError = ''
+
+  try {
+    const response = await apiFetch(`/calls/${encodeURIComponent(callAudioId)}/audio`, {
+      method: 'GET',
+    })
+
+    if (!response.ok) {
+      throw new Error(`Не удалось загрузить запись: HTTP ${response.status}`)
+    }
+
+    revokeProfileCallAudio(call)
+
+    const contentType = response.headers.get('content-type') || ''
+    if (contentType.includes('application/json')) {
+      const data = await response.json()
+      if (!data?.url) {
+        throw new Error('Сервер не вернул ссылку на аудио')
+      }
+      call.audioObjectUrl = data.url
+      return
+    }
+
+    const blob = await response.blob()
+    call.audioObjectUrl = URL.createObjectURL(blob)
+  } catch (error) {
+    call.audioError = error.message || 'Не удалось загрузить голосовую запись'
+  } finally {
+    call.audioLoading = false
+  }
+}
+
+function buildProfileCallDetailPath(userId, callId) {
+  return `/calls/history/${encodeURIComponent(callId)}`
+}
+
+function profileCallHasDetail(call) {
+  return Boolean(call?.result?.analysis || call?.analysis)
+}
+
+async function fetchProfileCallDetail(call, userId = resolveProfileHistoryUserId()) {
+  if (!call?.id || !userId || profileCallHasDetail(call)) return call
+
+  const res = await apiFetch(buildProfileCallDetailPath(userId, call.id), {
+    method: 'GET',
+  })
+  if (!res.ok) {
+    throw new Error(await readCallDetailError(res))
+  }
+
+  const detail = await res.json()
+  const ownerId = detail.user_id ?? getCallOwnerId(detail)
+  if (ownerId != null && String(ownerId) !== String(userId)) {
+    throw new Error('Этот звонок не принадлежит выбранному пользователю')
+  }
+
+  return applyProfileCallDetail(call, detail)
+}
+
+async function prefetchProfileCallDetails(userId = resolveProfileHistoryUserId()) {
+  if (!userId || !profileCallHistory.value.length) return
+
+  await Promise.all(
+    profileCallHistory.value.map(async (call) => {
+      if (profileCallHasDetail(call)) return
+
+      try {
+        const merged = await fetchProfileCallDetail(call, userId)
+        const index = profileCallHistory.value.findIndex((item) => item.id === call.id)
+        if (index !== -1) {
+          profileCallHistory.value[index] = merged
+        }
+      } catch {
+        // Prefetch is best-effort; click handler shows the real error.
+      }
+    }),
+  )
+}
+
 async function openProfileCall(call) {
   if (!call?.id || selectedProfileCallLoading.value) return
+
+  const historyUserId = resolveProfileHistoryUserId()
+  if (!historyUserId) {
+    selectedProfileCallError.value = 'Не удалось определить пользователя для загрузки анализа'
+    return
+  }
 
   selectedProfileCallLoading.value = true
   openingProfileCallId.value = call.id
   selectedProfileCallError.value = ''
+  selectedProfileCall.value = normalizeProfileCall(call)
+  window.scrollTo({ top: 0, behavior: 'smooth' })
 
   try {
-    const res = await apiFetch(`/calls/history/${encodeURIComponent(call.id)}`, {
-      method: 'GET',
-    })
-    if (!res.ok) throw new Error('Не удалось загрузить анализ звонка')
+    const merged = profileCallHasDetail(call)
+      ? normalizeProfileCall(call)
+      : await fetchProfileCallDetail(call, historyUserId)
 
-    const detail = await res.json()
-    const ownerId = getCallOwnerId(detail)
-    if (ownerId != null && String(ownerId) !== String(profileUserId.value)) {
-      throw new Error('Этот звонок не принадлежит выбранному пользователю')
-    }
+    selectedProfileCall.value = merged
+    await loadProfileCallAudio(selectedProfileCall.value)
 
-    const normalized = normalizeProfileCall({ ...call, ...detail })
-    selectedProfileCall.value = {
-      ...normalized,
-      result: detail,
-      score: detail.analysis?.score ?? normalized.score,
-      dealProbability: detail.analysis?.deal_probability ?? normalized.dealProbability,
-      funnelStage: detail.analysis?.sales_funnel_stage ?? normalized.funnelStage,
+    const index = profileCallHistory.value.findIndex((item) => item.id === call.id)
+    if (index !== -1) {
+      profileCallHistory.value[index] = merged
     }
   } catch (err) {
     selectedProfileCallError.value = err.message || 'Ошибка при загрузке анализа звонка'
@@ -974,6 +1098,35 @@ onMounted(fetchTeams)
                 <span>Этап</span>
                 <strong>{{ selectedProfileCall.funnelStage || selectedProfileCallAnalysis.sales_funnel_stage || '—' }}</strong>
               </article>
+            </div>
+
+            <div class="tp-call-audio-box">
+              <div class="box-header">
+                <span class="material-symbols-outlined">headphones</span>
+                <h4>Аудиозапись</h4>
+              </div>
+
+              <div class="tp-audio-controls">
+                <template v-if="selectedProfileCall.audioObjectUrl">
+                  <audio controls :src="selectedProfileCall.audioObjectUrl" class="tp-audio-player"></audio>
+                </template>
+
+                <template v-else>
+                  <button
+                    type="button"
+                    class="tp-button tp-button--secondary"
+                    @click="loadProfileCallAudio(selectedProfileCall)"
+                    :disabled="selectedProfileCall.audioLoading"
+                  >
+                    <span class="material-symbols-outlined">
+                      {{ selectedProfileCall.audioLoading ? 'sync' : 'play_arrow' }}
+                    </span>
+                    {{ selectedProfileCall.audioLoading ? 'Загрузка...' : 'Загрузить аудио' }}
+                  </button>
+                </template>
+
+                <p v-if="selectedProfileCall.audioError" class="tp-error-text">{{ selectedProfileCall.audioError }}</p>
+              </div>
             </div>
 
             <div class="tp-call-detail__grid">
